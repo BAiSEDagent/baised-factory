@@ -1,7 +1,7 @@
 {
   "name": "@baised/bmad-factory",
-  "version": "1.0.0",
-  "description": "4-agent pipeline for autonomous software development",
+  "version": "1.1.0",
+  "description": "4-agent LLM-powered pipeline for autonomous software development with persistence",
   "author": "BAiSED",
   "license": "MIT",
   "repository": "https://github.com/BAiSEDagent/bmad-factory",
@@ -9,9 +9,14 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "node dist/test.js"
+    "test": "node dist/test.js",
+    "example": "node dist/example.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "openai": "^4.0.0",
+    "sqlite3": "^5.1.6",
+    "sqlite": "^5.0.1"
+  },
   "devDependencies": {
     "typescript": "^5.0.0",
     "@types/node": "^20.0.0"
@@ -21,6 +26,7 @@
     "pipeline",
     "workflow",
     "autonomous",
+    "llm",
     "bmad"
   ],
   "config": {
