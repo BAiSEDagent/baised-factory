@@ -1,15 +1,7 @@
 /**
- * BMAD Factory - Main Orchestrator with LLM + Persistence
+ * BMAD Factory v1.2 - Worktree Isolation + PM Merge
  * 
- * Usage:
- *   const factory = new BMADFactory();
- *   await factory.initialize();
- *   
- *   const result = await factory.execute({
- *     type: 'feature',
- *     description: 'Add user authentication',
- *     requirements: ['OAuth2 login', 'JWT tokens', 'Session management']
- *   });
+ * One-shot shipping with parallel department agents
  */
 
 import { Router } from './agents/router';
@@ -17,212 +9,236 @@ import { ProjectLead } from './agents/project-lead';
 import { ResearchLead } from './agents/research-lead';
 import { Improver } from './agents/improver';
 import { Persistence, Pipeline, Task } from './persistence';
+import { ProjectManager } from './pm';
+import { WorktreeManager } from './worktree';
+import { ArtifactManifest, createManifest } from './manifest';
 import { Pipeline as PipelineConfig, Task as TaskConfig, Result } from './agents/types';
+
+export { ArtifactManifest, WorktreeManager, ProjectManager };
 
 export class BMADFactory {
   private router: Router;
   private persistence: Persistence;
+  private pm: ProjectManager;
+  private worktreeManager: WorktreeManager;
   private initialized: boolean = false;
   
-  // Default pipeline: Plan → Research → Implement → Test → Ship
-  private defaultPipeline: PipelineConfig = {
-    name: 'standard',
-    stages: [
-      { name: 'requirements', agent: 'ProjectLead', gates: [] },
-      { name: 'research', agent: 'ResearchLead', gates: [] },
-      { name: 'plan', agent: 'ProjectLead', gates: [] },
-      { name: 'implement', agent: 'ProjectLead', gates: [] },
-      { name: 'test', agent: 'ProjectLead', gates: [] },
-      { name: 'ship', agent: 'ProjectLead', gates: [] },
-    ]
-  };
-  
-  constructor() {
+  constructor(worktreeBaseDir?: string) {
     this.router = new Router();
     this.persistence = new Persistence();
+    this.pm = new ProjectManager();
+    this.worktreeManager = new WorktreeManager(worktreeBaseDir);
   }
   
   async initialize(dbPath?: string): Promise<void> {
-    // Initialize persistence
     await this.persistence.initialize(dbPath);
     
-    // Register LLM-powered agents
     this.router.register('ProjectLead', new ProjectLead());
     this.router.register('ResearchLead', new ResearchLead());
     this.router.register('Improver', new Improver());
     
     this.initialized = true;
-    console.log('✅ BMAD Factory initialized with LLM + Persistence');
+    console.log('✅ BMAD Factory v1.2 initialized (worktree isolation + PM merge)');
   }
   
-  async execute(taskConfig: TaskConfig, pipeline?: PipelineConfig): Promise<Result> {
+  /**
+   * Execute with worktree isolation
+   */
+  async execute(
+    taskConfig: TaskConfig,
+    options: {
+      pipeline?: PipelineConfig;
+      parallel?: boolean;
+      agents?: string[];
+    } = {}
+  ): Promise<{
+    pipelineId: string;
+    worktrees: string[];
+    commitHash?: string;
+    manifests: ArtifactManifest[];
+    success: boolean;
+    error?: string;
+  }> {
     if (!this.initialized) {
-      throw new Error('BMADFactory not initialized. Call initialize() first.');
+      throw new Error('BMADFactory not initialized');
     }
     
-    const pipelineConfig = pipeline || this.defaultPipeline;
     const pipelineId = `pipeline_${Date.now()}`;
+    const worktrees: string[] = [];
+    const manifests: ArtifactManifest[] = [];
     
-    // Create pipeline record
-    await this.persistence.createPipeline({
-      id: pipelineId,
-      name: pipelineConfig.name,
-      status: 'running',
-      currentStage: pipelineConfig.stages[0]?.name || '',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    
-    console.log(`🚀 Starting pipeline: ${pipelineConfig.name} (${pipelineId})`);
+    console.log(`🚀 BMAD v1.2 Pipeline: ${pipelineId}`);
     console.log(`📋 Task: ${taskConfig.description}`);
     
-    const results: Result[] = [];
-    
-    for (const stage of pipelineConfig.stages) {
-      console.log(`\n📍 Stage: ${stage.name} (${stage.agent})`);
+    try {
+      // Phase 1: PLAN - Project Lead breaks down work
+      console.log('\n📍 Phase 1: PLAN');
+      const planResult = await this.runAgentWithWorktree(
+        'ProjectLead',
+        'plan',
+        taskConfig,
+        pipelineId
+      );
       
-      // Update pipeline current stage
-      await this.persistence.updatePipeline(pipelineId, {
-        currentStage: stage.name,
-      });
+      const subtasks = planResult.data || [];
+      console.log(`  Planned ${subtasks.length} subtasks`);
       
-      const taskId = `${pipelineId}_${stage.name}`;
+      // Phase 2: RESEARCH - Research Lead discovers solutions
+      console.log('\n📍 Phase 2: RESEARCH');
+      const researchResult = await this.runAgentWithWorktree(
+        'ResearchLead',
+        'research',
+        taskConfig,
+        pipelineId
+      );
       
-      // Create task record
-      const task: Task = {
-        id: taskId,
-        pipelineId: pipelineId,
-        stage: stage.name,
-        agent: stage.agent,
-        description: taskConfig.description,
-        type: stage.name,
-        critical: taskConfig.critical || false,
-        status: 'running',
-        data: JSON.stringify(taskConfig.data || {}),
-        createdAt: Date.now(),
+      console.log(`  Recommendation: ${researchResult.data?.bestChoice || 'N/A'}`);
+      
+      // Phase 3: PARALLEL IMPLEMENTATION - Department agents
+      console.log('\n📍 Phase 3: PARALLEL IMPLEMENT');
+      
+      const departmentAgents = options.agents || ['Frontend', 'Backend'];
+      
+      if (options.parallel) {
+        // Run all departments in parallel
+        const departmentPromises = departmentAgents.map(agent => 
+          this.runAgentWithWorktree(agent, 'implement', taskConfig, pipelineId)
+        );
+        
+        const results = await Promise.all(departmentPromises);
+        
+        for (const result of results) {
+          if (result.manifest) manifests.push(result.manifest);
+          if (result.worktree) worktrees.push(result.worktree);
+        }
+      } else {
+        // Sequential for now
+        for (const agent of departmentAgents) {
+          const result = await this.runAgentWithWorktree(agent, 'implement', taskConfig, pipelineId);
+          if (result.manifest) manifests.push(result.manifest);
+          if (result.worktree) worktrees.push(result.worktree);
+        }
+      }
+      
+      // Phase 4: PM REVIEW + MERGE
+      console.log('\n📍 Phase 4: PM REVIEW & MERGE');
+      
+      const review = this.pm.review(manifests);
+      
+      console.log(`  Conflicts: ${review.conflicts.length}`);
+      console.log(`  Errors: ${review.errors.length}`);
+      console.log(`  Warnings: ${review.warnings.length}`);
+      console.log(`  Risk: ${review.riskAssessment.level}`);
+      
+      if (!review.approved) {
+        throw new Error(`Review failed: ${review.errors.join(', ')}`);
+      }
+      
+      // Merge to main
+      const worktreeObjs = worktrees.map(w => this.worktreeManager.get(w)!).filter(Boolean);
+      const mergeResult = this.pm.merge(worktreeObjs, manifests, 'main');
+      
+      if (!mergeResult.success) {
+        throw new Error(`Merge failed: ${mergeResult.error}`);
+      }
+      
+      console.log('\n✅ Pipeline complete!');
+      console.log(`   Commit: ${mergeResult.commitHash}`);
+      
+      // Cleanup worktrees
+      for (const wt of worktrees) {
+        this.worktreeManager.cleanup(wt);
+      }
+      
+      return {
+        pipelineId,
+        worktrees,
+        commitHash: mergeResult.commitHash,
+        manifests,
+        success: true,
       };
       
-      await this.persistence.createTask(task);
+    } catch (error) {
+      console.error('\n❌ Pipeline failed:', error);
       
-      try {
-        const stageTask: TaskConfig = {
-          ...taskConfig,
-          id: taskId,
-          type: stage.name,
-        };
-        
-        // Execute quality gates
-        for (const gate of stage.gates) {
-          console.log(`  🔍 Gate: ${gate.name}`);
-          const passed = await this.runGate(gate, stageTask);
-          if (!passed) {
-            throw new Error(`Quality gate failed: ${gate.name}`);
-          }
-        }
-        
-        // Route to agent
-        const result = await this.router.route(stageTask);
-        results.push(result);
-        
-        // Update task as completed
-        await this.persistence.updateTask(taskId, {
-          status: 'completed',
-          result: JSON.stringify(result),
-          endTime: Date.now(),
-        });
-        
-        console.log(`  ✅ Stage complete`);
-      } catch (error) {
-        console.error(`  ❌ Stage failed: ${error}`);
-        
-        // Update task as failed
-        await this.persistence.updateTask(taskId, {
-          status: 'failed',
-          error: String(error),
-          endTime: Date.now(),
-        });
-        
-        // Update pipeline as failed
-        await this.persistence.updatePipeline(pipelineId, {
-          status: 'failed',
-        });
-        
-        // Analyze failure
-        await this.analyzeFailure(stageTask, error);
-        
-        return {
-          success: false,
-          error: String(error),
-          logs: results.map(r => r.logs || []).flat(),
-        };
+      // Cleanup on failure
+      for (const wt of worktrees) {
+        this.worktreeManager.cleanup(wt);
       }
-    }
-    
-    // Mark pipeline as completed
-    await this.persistence.updatePipeline(pipelineId, {
-      status: 'completed',
-      currentStage: 'done',
-    });
-    
-    console.log('\n✅ Pipeline complete!');
-    
-    return {
-      success: true,
-      data: { 
+      
+      return {
         pipelineId,
-        stages: results 
-      },
-      logs: results.map(r => r.logs || []).flat(),
-    };
-  }
-  
-  private async runGate(gate: any, task: TaskConfig): Promise<boolean> {
-    for (const check of (gate.checks || [])) {
-      const passed = await check.validator(task);
-      if (!passed) return false;
+        worktrees,
+        manifests,
+        success: false,
+        error: String(error),
+      };
     }
-    return true;
   }
   
-  private async analyzeFailure(task: TaskConfig, error: any): Promise<void> {
+  private async runAgentWithWorktree(
+    agentName: string,
+    stage: string,
+    taskConfig: TaskConfig,
+    pipelineId: string
+  ): Promise<{ success: boolean; data?: any; manifest?: ArtifactManifest; worktree?: string }> {
+    // Spawn worktree
+    const branchName = `${pipelineId}_${agentName.toLowerCase()}`;
+    const worktree = this.worktreeManager.spawn(branchName, 'main');
+    
+    console.log(`  [${agentName}] Spawning worktree: ${branchName}`);
+    
+    // Run agent in worktree
+    const agent = this.router.getAgent(agentName);
+    const task: TaskConfig = {
+      ...taskConfig,
+      id: `${pipelineId}_${agentName}`,
+      type: stage,
+    };
+    
     try {
-      const improver = this.router.getAgent('Improver');
-      await improver.execute({
-        id: `analyze_${Date.now()}`,
-        type: 'analyze-failure',
-        description: 'Analyze failure for patterns',
-        data: { task, error },
-      });
-    } catch (e) {
-      console.error('Failed to analyze failure:', e);
+      const result = await agent.execute(task);
+      
+      // Generate manifest from result
+      const manifest = createManifest(
+        agentName,
+        branchName,
+        result.success ? `Completed ${stage}` : `Failed: ${result.error}`,
+        result.data?.filesChanged || [],
+        {
+          testStatus: result.success ? 'pass' : 'fail',
+          notes: result.logs || [],
+          riskFlags: result.data?.riskFlags || [],
+        }
+      );
+      
+      return {
+        success: result.success,
+        data: result.data,
+        manifest,
+        worktree: branchName,
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        manifest: createManifest(
+          agentName,
+          branchName,
+          `Error: ${error}`,
+          [],
+          { testStatus: 'fail', notes: [String(error)] }
+        ),
+        worktree: branchName,
+      };
     }
   }
   
   async getStatus(): Promise<any> {
-    const running = await this.persistence.getRunningPipelines();
-    const recentFailed = await this.persistence.getFailedTasks(Date.now() - 24 * 60 * 60 * 1000);
-    
     return {
-      runningPipelines: running.length,
-      recentFailures: recentFailed.length,
+      worktrees: this.worktreeManager.list().length,
+      runningPipelines: (await this.persistence.getRunningPipelines()).length,
       routerStatus: await this.router.getStatus(),
     };
   }
-  
-  async getPipelineDetails(pipelineId: string): Promise<any> {
-    const pipeline = await this.persistence.getPipeline(pipelineId);
-    if (!pipeline) return null;
-    
-    const tasks = await this.persistence.getPipelineTasks(pipelineId);
-    
-    return {
-      ...pipeline,
-      tasks,
-    };
-  }
 }
-
-// Re-exports
-export { Router, ProjectLead, ResearchLead, Improver };
-export * from './agents/types';
-export * from './persistence';
