@@ -1,0 +1,30 @@
+{
+  "name": "@baised/bmad-factory",
+  "version": "1.0.0",
+  "description": "4-agent pipeline for autonomous software development",
+  "author": "BAiSED",
+  "license": "MIT",
+  "repository": "https://github.com/BAiSEDagent/bmad-factory",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node dist/test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "keywords": [
+    "ai-agent",
+    "pipeline",
+    "workflow",
+    "autonomous",
+    "bmad"
+  ],
+  "config": {
+    "core": "./core/",
+    "changelog": "./changelog/"
+  }
+}

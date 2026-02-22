@@ -1,0 +1,13 @@
+{
+  "name": "bmad-factory",
+  "version": "1.0.0",
+  "description": "4-agent pipeline for autonomous software development",
+  "author": "BAiSED",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "entrypoint": "./src/index.ts",
+  "config": {
+    "core_dir": "./core",
+    "changelog_dir": "./changelog"
+  }
+}
