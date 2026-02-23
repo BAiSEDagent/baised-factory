@@ -1,0 +1,28 @@
+{
+  "strict": true,
+  "generatedPaths": ["dist/", "build/", ".next/", "out/", "coverage/", "node_modules/"],
+  "allowSharedPaths": ["docs/", "README.md", "CHANGELOG.md", "LICENSE"],
+  "restrictedPaths": [
+    "shared/",
+    "package.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "package-lock.json",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    ".eslintrc*",
+    ".prettierrc*",
+    "turbo.json",
+    "nx.json",
+    "Dockerfile",
+    "docker-compose.yml"
+  ],
+  "owners": {
+    "Frontend": ["apps/web/", "apps/mobile/", "packages/ui/", "packages/components/"],
+    "Backend": ["apps/api/", "apps/server/", "packages/core/", "db/", "prisma/", "migrations/"],
+    "QA": ["tests/", "e2e/", "playwright/", "cypress/", "__tests__/", "*.test.ts", "*.spec.ts"],
+    "Docs": ["docs/", "README.md", "CONTRIBUTING.md", ".github/ISSUE_TEMPLATE/"],
+    "Infra": ["terraform/", "docker/", "k8s/", ".github/workflows/", "scripts/deploy/"]
+  },
+  "lockfileOwner": "Backend"
+}

@@ -133,7 +133,8 @@ export function enforceCommit(
 }
 
 /**
- * Merge commits atomically to target branch
+ * Merge commits atomically to target branch using git merge
+ * Preserves merge history with --no-ff
  * All-or-nothing: either all commits merge, or none do
  */
 export function mergeCommitsAtomic(
@@ -172,25 +173,20 @@ export function mergeCommitsAtomic(
     // Checkout target
     execSync(`git checkout ${target}`, { cwd: repoPath });
     
-    // Merge each commit
+    // Merge each commit using git merge --no-ff (preserves merge history)
     for (const { agent, commitHash, branch } of ordered) {
       console.log(`[PM] Merging ${agent}: ${commitHash.slice(0, 8)}`);
       
       try {
-        // Cherry-pick the commit (cleaner than merging branch)
-        execSync(`git cherry-pick ${commitHash} --no-commit`, { cwd: repoPath });
-        
-        // Commit with attribution
-        execSync(`git commit -m "[${agent}] ${commitHash.slice(0, 8)}" --no-edit`, { 
-          cwd: repoPath 
-        });
+        // Merge the commit with no-fast-forward (preserves branch history)
+        execSync(`git merge --no-ff --no-edit ${commitHash}`, { cwd: repoPath });
         
         merged.push(commitHash);
         
       } catch (error) {
         // Abort on conflict
         try {
-          execSync('git cherry-pick --abort', { cwd: repoPath });
+          execSync('git merge --abort', { cwd: repoPath });
         } catch {}
         
         return {

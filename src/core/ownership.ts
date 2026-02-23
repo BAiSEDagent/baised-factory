@@ -206,3 +206,20 @@ export function validateParallelPlan(
   
   return { safe, result };
 }
+
+/**
+ * Enforce ownership or throw hard error
+ * Use in Router before spawning worktrees
+ */
+export function enforceOwnershipOrThrow(
+  plan: PlannedChange[],
+  cfg: OwnershipConfig
+): OwnershipCheckResult {
+  const res = checkOwnership(plan, cfg);
+  if (!res.ok) {
+    throw new Error(
+      `Ownership check failed:\n- ${res.errors.join("\n- ")}`
+    );
+  }
+  return res; // includes warnings
+}
