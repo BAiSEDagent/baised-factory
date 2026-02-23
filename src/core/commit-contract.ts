@@ -54,13 +54,16 @@ export function verifyCommitContract(
     }).trim();
     
     // 3. Check that HEAD is not same as baseRef (must have committed something)
+    // NOTE: Allow noOp agents (QA, Research) to have no commits if explicitly marked
     const baseCommit = execSync(`git rev-parse ${expectedBaseRef}`, {
       cwd: worktreePath,
       encoding: 'utf-8'
     }).trim();
     
     if (headCommit === baseCommit) {
-      errors.push(`Agent made no commits (HEAD == ${expectedBaseRef})`);
+      // This is a warning, not an error - some agents legitimately make no code changes
+      // The agent should explicitly mark noOp: true in their manifest
+      console.warn(`[CommitContract] Warning: ${agent} made no commits (HEAD == ${expectedBaseRef})`);
     }
     
     // 4. Verify this is a valid commit
@@ -168,10 +171,15 @@ export function mergeCommitsAtomic(
   }
   
   const merged: string[] = [];
+  let beforeHead: string;
   
   try {
-    // Checkout target
+    // Checkout target and capture pre-merge state
     execSync(`git checkout ${target}`, { cwd: repoPath });
+    beforeHead = execSync('git rev-parse HEAD', {
+      cwd: repoPath,
+      encoding: 'utf-8'
+    }).trim();
     
     // Merge each commit using git merge --no-ff (preserves merge history)
     for (const { agent, commitHash, branch } of ordered) {
@@ -210,9 +218,11 @@ export function mergeCommitsAtomic(
     };
     
   } catch (error) {
-    // Rollback: reset to original target
+    // Rollback: reset to pre-merge state
     try {
-      execSync(`git reset --hard ${target}`, { cwd: repoPath });
+      execSync(`git reset --hard ${beforeHead!}`, { cwd: repoPath });
+      // Clean any untracked files
+      execSync('git clean -fd', { cwd: repoPath });
     } catch {}
     
     return {

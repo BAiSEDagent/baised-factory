@@ -144,26 +144,41 @@ export class BAiSEDFactory {
       // ========================================
       // PHASE 1: OWNERSHIP VALIDATION (v1.3.0)
       // ========================================
-      let ownershipCheck;
+      let ownershipCheck: { safe: boolean; errors: string[] } = { safe: true, errors: [] };
       
       if (options.parallel && options.agents) {
         console.log('\n📍 Phase 1: OWNERSHIP VALIDATION');
         
-        // Build planned changes from agents
-        const plannedChanges = options.agents.map(agent => ({
-          agent,
-          files: [], // Will be populated as agents work
+        // Build planned changes from subtasks
+        // Each subtask should have plannedFiles from ProjectLead
+        const plannedChanges = subtasks.map((task: any) => ({
+          agent: task.agent || task.assignee || 'Unknown',
+          files: task.plannedFiles || task.files || [task.scope || '*'],
         }));
         
-        // For now, validate that parallel mode is safe
-        // In production, this would analyze the actual file changes
+        // Validate ownership before spawning worktrees
+        const validation = validateParallelPlan(plannedChanges, this.ownershipConfig);
         ownershipCheck = {
-          safe: true,
-          errors: [],
+          safe: validation.safe,
+          errors: validation.result.errors,
         };
+        
+        if (!validation.safe) {
+          console.error('  ❌ Ownership validation failed:');
+          validation.result.errors.forEach(e => console.error(`     - ${e}`));
+          
+          // Hard fail in strict mode (recommended for training)
+          throw new Error(
+            `Ownership check failed. Parallel mode not safe:\n${validation.result.errors.join('\n')}`
+          );
+        }
         
         console.log(`  ✅ Parallel mode validated`);
         console.log(`  📋 Agents: ${options.agents.join(', ')}`);
+        
+        if (validation.result.warnings.length > 0) {
+          validation.result.warnings.forEach(w => console.log(`  ⚠️  ${w}`));
+        }
       }
       
       // ========================================

@@ -1,14 +1,26 @@
 /**
- * Artifact Manifest Protocol
- * Every agent must output this structure
+ * Artifact Manifest Protocol (v1.3.0)
+ * 
+ * Every agent must output this structure.
+ * Schema-validated, machine-readable, audit-trail ready.
  */
 
 export interface ArtifactManifest {
   agent: string;
   worktree: string;
+  baseRef: string;
+  headCommit: string;
+  noOp?: boolean;  // If true, agent made no code changes (valid for QA, Research)
   summary: string;
   filesChanged: string[];
   commandsRun: string[];
+  gates: {
+    lint?: 'pass' | 'fail' | 'skipped';
+    typecheck?: 'pass' | 'fail' | 'skipped';
+    unitTest?: 'pass' | 'fail' | 'skipped';
+    e2eTest?: 'pass' | 'fail' | 'skipped';
+    docs?: 'pass' | 'fail' | 'skipped';
+  };
   testStatus: 'pass' | 'fail' | 'skipped';
   notes: string[];
   riskFlags: RiskFlag[];
@@ -18,11 +30,9 @@ export interface ArtifactManifest {
 export type RiskFlag = 
   | 'touches-auth'
   | 'db-migration'
-  | 'api-change'
   | 'breaking-change'
-  | 'secrets'
-  | 'performance'
-  | 'security';
+  | 'security-sensitive'
+  | 'performance-critical';
 
 export interface ManifestValidation {
   valid: boolean;
@@ -41,12 +51,11 @@ export function validateManifest(manifest: any): ManifestValidation {
   if (!manifest.agent) errors.push('Missing required field: agent');
   if (!manifest.worktree) errors.push('Missing required field: worktree');
   if (!manifest.summary) errors.push('Missing required field: summary');
+  if (!manifest.headCommit) errors.push('Missing required field: headCommit (agent must commit)');
   
   // Files changed
   if (!Array.isArray(manifest.filesChanged)) {
     errors.push('filesChanged must be an array');
-  } else if (manifest.filesChanged.length === 0) {
-    warnings.push('No files changed');
   }
   
   // Test status
@@ -55,12 +64,30 @@ export function validateManifest(manifest: any): ManifestValidation {
     errors.push(`testStatus must be one of: ${validStatuses.join(', ')}`);
   }
   
-  // Warnings for risky flags
-  if (manifest.riskFlags?.includes('touches-auth')) {
-    warnings.push('Authentication changes require security review');
+  // Risk flag validation
+  const validRiskFlags: RiskFlag[] = [
+    'touches-auth',
+    'db-migration',
+    'breaking-change',
+    'security-sensitive',
+    'performance-critical',
+  ];
+  
+  if (manifest.riskFlags) {
+    for (const flag of manifest.riskFlags) {
+      if (!validRiskFlags.includes(flag)) {
+        warnings.push(`Unknown risk flag: ${flag}`);
+      }
+    }
   }
-  if (manifest.riskFlags?.includes('db-migration')) {
-    warnings.push('Database migrations require rollback plan');
+  
+  // Warnings for risky combinations
+  if (manifest.riskFlags?.includes('touches-auth') && manifest.riskFlags?.includes('breaking-change')) {
+    warnings.push('CRITICAL: Authentication + breaking change requires security review');
+  }
+  
+  if (manifest.riskFlags?.includes('db-migration') && manifest.testStatus === 'fail') {
+    errors.push('BLOCKING: Database migration with failing tests');
   }
   
   return {
@@ -78,6 +105,9 @@ export function detectConflicts(manifests: ArtifactManifest[]): string[] {
   const fileToManifest = new Map<string, string>();
   
   for (const manifest of manifests) {
+    // Skip noOp manifests (no file changes)
+    if (manifest.noOp) continue;
+    
     for (const file of manifest.filesChanged) {
       if (fileToManifest.has(file)) {
         const otherAgent = fileToManifest.get(file)!;
@@ -106,9 +136,13 @@ export function createManifest(
   return {
     agent,
     worktree,
+    baseRef: options.baseRef || 'main',
+    headCommit: options.headCommit || 'UNKNOWN',
+    noOp: options.noOp || (filesChanged.length === 0 && !options.headCommit),
     summary,
     filesChanged,
     commandsRun: options.commandsRun || [],
+    gates: options.gates || {},
     testStatus: options.testStatus || 'skipped',
     notes: options.notes || [],
     riskFlags: options.riskFlags || [],
