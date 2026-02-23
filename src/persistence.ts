@@ -30,7 +30,7 @@ export interface Pipeline {
 export class Persistence {
   private db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
   
-  async initialize(dbPath: string = '~/.baised/bmad.db'): Promise<void> {
+  async initialize(dbPath: string = '~/.baised/baised-factory.db'): Promise<void> {
     const resolvedPath = dbPath.replace('~', process.env.HOME || '');
     
     this.db = await open({

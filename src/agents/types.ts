@@ -1,5 +1,5 @@
 /**
- * BMAD Factory - Types
+ * BAiSED Factory Factory - Types
  */
 
 export interface Agent {

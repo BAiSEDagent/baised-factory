@@ -13,7 +13,7 @@ export class WorktreeManager {
   private baseDir: string;
   private worktrees: Map<string, Worktree> = new Map();
   
-  constructor(baseDir: string = '/tmp/bmad-worktrees') {
+  constructor(baseDir: string = '/tmp/baised-factory-worktrees') {
     this.baseDir = baseDir;
     if (!existsSync(baseDir)) {
       mkdirSync(baseDir, { recursive: true });

@@ -1,5 +1,5 @@
 /**
- * LLM Client for BMAD Agents
+ * LLM Client for BAiSED Factory Agents
  * Supports OpenAI, Anthropic, and local models
  */
 

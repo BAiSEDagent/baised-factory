@@ -78,7 +78,7 @@ export function runPreflight(opts: PreflightOptions): PreflightResult {
   
   // 5. Worktree root must be writable
   try {
-    const testFile = path.join(repoPath, '.bmad-write-test');
+    const testFile = path.join(repoPath, '.baised-factory-write-test');
     require('fs').writeFileSync(testFile, '');
     require('fs').unlinkSync(testFile);
   } catch {

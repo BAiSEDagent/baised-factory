@@ -1,4 +1,4 @@
-# BMAD Factory v1.2.0
+# BAiSED Factory Factory v1.2.0
 
 **One-shot shipping with worktree isolation and PM merge.**
 
@@ -54,9 +54,9 @@
 ## Quick Start
 
 ```typescript
-import { BMADFactory } from '@baised/bmad-factory';
+import { BAiSED FactoryFactory } from '@baised/baised-factory-factory';
 
-const factory = new BMADFactory('/tmp/my-worktrees');
+const factory = new BAiSED FactoryFactory('/tmp/my-worktrees');
 await factory.initialize();
 
 // One-shot build with parallel departments
@@ -221,7 +221,7 @@ Result:
 ## Directory Structure
 
 ```
-/tmp/bmad-worktrees/
+/tmp/baised-factory-worktrees/
 ├── feat-auth-frontend/     # Frontend agent worktree
 ├── feat-auth-backend/      # Backend agent worktree
 ├── feat-auth-qa/           # QA agent worktree
@@ -264,7 +264,7 @@ const result = pm.merge(worktrees, manifests, 'main');
 pm.setStrictMode(false); // Allow conflicts (not recommended)
 ```
 
-### BMADFactory.execute()
+### BAiSED FactoryFactory.execute()
 
 ```typescript
 const result = await factory.execute(
@@ -291,11 +291,11 @@ const result = await factory.execute(
 
 ```typescript
 // v1.1 - Shared working directory
-const factory = new BMADFactory();
+const factory = new BAiSED FactoryFactory();
 await factory.initialize();
 
 // v1.2 - Worktree isolation
-const factory = new BMADFactory('/tmp/worktrees');
+const factory = new BAiSED FactoryFactory('/tmp/worktrees');
 await factory.initialize();
 
 // Execute now spawns worktrees automatically
@@ -346,7 +346,7 @@ const wt = worktreeManager.get(failed[0].worktree);
 ## Architecture
 
 ```
-BMADFactory v1.2
+BAiSED FactoryFactory v1.2
 ├── WorktreeManager
 │   ├── spawn()     // git worktree add
 │   ├── cleanup()   // git worktree remove
@@ -367,5 +367,5 @@ MIT
 ## Credits
 
 Based on Codex worktree architecture  
-Inspired by kellyclaudeai/bmad-factory  
+Inspired by kellyclaudeai/baised-factory-factory  
 Built for one-shot product shipping

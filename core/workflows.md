@@ -1,6 +1,6 @@
-# BMAD Factory - Core Workflows
+# BAiSED Factory Factory - Core Workflows
 
-Based on kellyclaudeai/bmad-factory patterns.
+Based on kellyclaudeai/baised-factory-factory patterns.
 
 ## 4-Agent Pipeline
 

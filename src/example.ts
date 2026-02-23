@@ -1,15 +1,15 @@
 /**
- * BMAD Factory - Usage Example
+ * BAiSED Factory Factory - Usage Example
  */
 
-import { BMADFactory } from './index';
+import { BAiSED FactoryFactory } from './index';
 
 async function main() {
   // Initialize factory
-  const factory = new BMADFactory();
+  const factory = new BAiSED FactoryFactory();
   await factory.initialize();
   
-  console.log('BMAD Factory Example\n');
+  console.log('BAiSED Factory Factory Example\n');
   
   // Example 1: Build a feature
   const result = await factory.execute({
